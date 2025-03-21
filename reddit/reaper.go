@@ -1,6 +1,7 @@
 package reddit
 
 import (
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -87,14 +88,34 @@ func (r *reaperImpl) reap(path string, values map[string]string) (Harvest, error
 
 func (r *reaperImpl) sow(path string, values map[string]string) error {
 	r.rateBlock()
-	_, err := r.cli.Do(
-		&http.Request{
-			Method: "POST",
-			Header: formEncoding,
-			Host:   r.hostname,
-			URL:    r.url(path, values),
-		},
-	)
+
+	// Create URL without query parameters
+	u := &url.URL{
+		Scheme: r.scheme,
+		Host:   r.hostname,
+		Path:   path,
+	}
+
+	// Format values for form data
+	formData := r.formatValues(values)
+	encodedForm := formData.Encode()
+
+	// Create request with body instead of URL parameters
+	req := &http.Request{
+		Method: "POST",
+		Header: formEncoding,
+		Host:   r.hostname,
+		URL:    u,
+		Body:   http.NoBody, // Will be set below if form data exists
+	}
+
+	// Only set body if there are values to send
+	if len(encodedForm) > 0 {
+		req.Body = io.NopCloser(strings.NewReader(encodedForm))
+		req.ContentLength = int64(len(encodedForm))
+	}
+
+	_, err := r.cli.Do(req)
 
 	return err
 }
@@ -102,14 +123,34 @@ func (r *reaperImpl) sow(path string, values map[string]string) error {
 func (r *reaperImpl) get_sow(path string, values map[string]string) (Submission, error) {
 	r.rateBlock()
 	values["api_type"] = "json"
-	resp, err := r.cli.Do(
-		&http.Request{
-			Method: "POST",
-			Header: formEncoding,
-			Host:   r.hostname,
-			URL:    r.url(path, values),
-		},
-	)
+
+	// Create URL without query parameters
+	u := &url.URL{
+		Scheme: r.scheme,
+		Host:   r.hostname,
+		Path:   path,
+	}
+
+	// Format values for form data
+	formData := r.formatValues(values)
+	encodedForm := formData.Encode()
+
+	// Create request with body instead of URL parameters
+	req := &http.Request{
+		Method: "POST",
+		Header: formEncoding,
+		Host:   r.hostname,
+		URL:    u,
+		Body:   http.NoBody, // Will be set below if form data exists
+	}
+
+	// Only set body if there are values to send
+	if len(encodedForm) > 0 {
+		req.Body = io.NopCloser(strings.NewReader(encodedForm))
+		req.ContentLength = int64(len(encodedForm))
+	}
+
+	resp, err := r.cli.Do(req)
 
 	if err != nil {
 		return Submission{}, err

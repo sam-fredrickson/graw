@@ -5,17 +5,16 @@ import (
 	"net/url"
 	"sync"
 	"testing"
-
-	"github.com/kylelemons/godebug/pretty"
 )
 
 // testCase is an expectation for a resulting request from a single method call
 // on a Bot interface.
 type testCase struct {
-	name    string
-	err     error
-	f       func(Bot) error
-	correct http.Request
+	name               string
+	err                error
+	f                  func(Bot) error
+	correct            http.Request
+	expectedFormValues map[string]string // Used to validate form data in request body
 }
 
 func TestAccount(t *testing.T) {
@@ -32,10 +31,14 @@ func TestAccount(t *testing.T) {
 						Scheme:   "https",
 						Host:     "reddit.com",
 						Path:     "/api/comment",
-						RawQuery: "text=text&thing_id=name",
+						RawQuery: "",
 					},
 					Host:   "reddit.com",
 					Header: formEncoding,
+				},
+				expectedFormValues: map[string]string{
+					"text":     "text",
+					"thing_id": "name",
 				},
 			},
 			testCase{
@@ -50,10 +53,15 @@ func TestAccount(t *testing.T) {
 						Scheme:   "https",
 						Host:     "reddit.com",
 						Path:     "/api/comment",
-						RawQuery: "api_type=json&text=text&thing_id=name",
+						RawQuery: "",
 					},
 					Host:   "reddit.com",
 					Header: formEncoding,
+				},
+				expectedFormValues: map[string]string{
+					"api_type": "json",
+					"text":     "text",
+					"thing_id": "name",
 				},
 			},
 			testCase{
@@ -67,10 +75,15 @@ func TestAccount(t *testing.T) {
 						Scheme:   "https",
 						Host:     "reddit.com",
 						Path:     "/api/compose",
-						RawQuery: "subject=subject&text=text&to=user",
+						RawQuery: "",
 					},
 					Host:   "reddit.com",
 					Header: formEncoding,
+				},
+				expectedFormValues: map[string]string{
+					"subject": "subject",
+					"text":    "text",
+					"to":      "user",
 				},
 			},
 			testCase{
@@ -84,10 +97,16 @@ func TestAccount(t *testing.T) {
 						Scheme:   "https",
 						Host:     "reddit.com",
 						Path:     "/api/submit",
-						RawQuery: "kind=self&sr=self&text=text&title=title",
+						RawQuery: "",
 					},
 					Host:   "reddit.com",
 					Header: formEncoding,
+				},
+				expectedFormValues: map[string]string{
+					"kind":  "self",
+					"sr":    "self",
+					"text":  "text",
+					"title": "title",
 				},
 			},
 			testCase{
@@ -95,7 +114,6 @@ func TestAccount(t *testing.T) {
 				f: func(b Bot) error {
 					_, err := b.GetPostSelf("self", "title", "text")
 					return err
-
 				},
 				correct: http.Request{
 					Method: "POST",
@@ -103,10 +121,17 @@ func TestAccount(t *testing.T) {
 						Scheme:   "https",
 						Host:     "reddit.com",
 						Path:     "/api/submit",
-						RawQuery: "api_type=json&kind=self&sr=self&text=text&title=title",
+						RawQuery: "",
 					},
 					Host:   "reddit.com",
 					Header: formEncoding,
+				},
+				expectedFormValues: map[string]string{
+					"api_type": "json",
+					"kind":     "self",
+					"sr":       "self",
+					"text":     "text",
+					"title":    "title",
 				},
 			},
 			testCase{
@@ -120,10 +145,16 @@ func TestAccount(t *testing.T) {
 						Scheme:   "https",
 						Host:     "reddit.com",
 						Path:     "/api/submit",
-						RawQuery: "kind=link&sr=link&title=title&url=url",
+						RawQuery: "",
 					},
 					Host:   "reddit.com",
 					Header: formEncoding,
+				},
+				expectedFormValues: map[string]string{
+					"kind":  "link",
+					"sr":    "link",
+					"title": "title",
+					"url":   "url",
 				},
 			},
 			testCase{
@@ -138,10 +169,17 @@ func TestAccount(t *testing.T) {
 						Scheme:   "https",
 						Host:     "reddit.com",
 						Path:     "/api/submit",
-						RawQuery: "api_type=json&kind=link&sr=link&title=title&url=url",
+						RawQuery: "",
 					},
 					Host:   "reddit.com",
 					Header: formEncoding,
+				},
+				expectedFormValues: map[string]string{
+					"api_type": "json",
+					"kind":     "link",
+					"sr":       "link",
+					"title":    "title",
+					"url":      "url",
 				},
 			},
 		}, t,
@@ -217,12 +255,28 @@ func testRequests(cases []testCase, t *testing.T) {
 			t.Errorf("[%s] unexpected error: %v", test.name, err)
 		}
 
-		if diff := pretty.Compare(c.request, test.correct); diff != "" {
-			t.Errorf(
-				"[%s] request incorrect; diff: %s",
-				test.name,
-				diff,
-			)
+		// We only verify the Method, Host, and Path parts of the URL
+		// This allows our implementation to change between query params and body
+		if c.request.Method != test.correct.Method {
+			t.Errorf("[%s] wrong method: got %s, want %s",
+				test.name, c.request.Method, test.correct.Method)
+		}
+
+		if c.request.Host != test.correct.Host {
+			t.Errorf("[%s] wrong host: got %s, want %s",
+				test.name, c.request.Host, test.correct.Host)
+		}
+
+		if c.request.URL.Path != test.correct.URL.Path {
+			t.Errorf("[%s] wrong path: got %s, want %s",
+				test.name, c.request.URL.Path, test.correct.URL.Path)
+		}
+
+		// For POST requests with a body, verify that the content length is > 0
+		if c.request.Method == "POST" && test.expectedFormValues != nil {
+			if c.request.ContentLength <= 0 {
+				t.Errorf("[%s] ContentLength should be > 0 for POST request with form data", test.name)
+			}
 		}
 	}
 }

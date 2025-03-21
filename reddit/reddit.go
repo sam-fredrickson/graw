@@ -3,27 +3,27 @@
 // It provides two handles for the Reddit API. Logged out users can claim a
 // Script handle.
 //
-//   rate := 5 * time.Second
-//   script, _ := NewScript("graw:doc_script:0.3.1 by /u/yourusername", rate)
-//   post, _ := script.Thread("r/programming/comments/5du93939")
-//   fmt.Printf("%s posted \"%s\"!", post.Author, post.Title)
+//	rate := 5 * time.Second
+//	script, _ := NewScript("graw:doc_script:0.3.1 by /u/yourusername", rate)
+//	post, _ := script.Thread("r/programming/comments/5du93939")
+//	fmt.Printf("%s posted \"%s\"!", post.Author, post.Title)
 //
 // Logged in users can claim a Bot handle with a superset of the former's
 // features.
 //
-//   cfg := BotConfig{
-//     Agent: "graw:doc_demo_bot:0.3.1 by /u/yourusername"
-//     // Your registered app info from following:
-//     // https://github.com/reddit/reddit/wiki/OAuth2
-//     App: App{
-//       ID:     "sdf09ofnsdf",
-//       Secret: "skldjnfksjdnf",
-//       Username: "yourbotusername",
-//       Password: "yourbotspassword",
-//     }
-//   }
-//   bot, _ := NewBot(cfg)
-//   bot.SendMessage("roxven", "Thanks for making this Reddit API!", "It's ok.")
+//	cfg := BotConfig{
+//	  Agent: "graw:doc_demo_bot:0.3.1 by /u/yourusername"
+//	  // Your registered app info from following:
+//	  // https://github.com/reddit/reddit/wiki/OAuth2
+//	  App: App{
+//	    ID:     "sdf09ofnsdf",
+//	    Secret: "skldjnfksjdnf",
+//	    Username: "yourbotusername",
+//	    Password: "yourbotspassword",
+//	  }
+//	}
+//	bot, _ := NewBot(cfg)
+//	bot.SendMessage("roxven", "Thanks for making this Reddit API!", "It's ok.")
 //
 // Requests made by this API are rate limited with no bursting. All interfaces
 // exported by this package have goroutine safe implementations, but when shared
